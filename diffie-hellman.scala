@@ -2,6 +2,7 @@
 //> using toolkit 0.7.0
 
 object DiffieHellman:
+  // https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
   val RNG = java.security.SecureRandom()
   val G = BigInt(2)  // used as base in modPow, should be a primitive root modulo P
   val DefaultBitLength = 2048  // should be at least 2048
