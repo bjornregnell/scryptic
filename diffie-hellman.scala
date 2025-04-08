@@ -4,16 +4,14 @@
 object DiffieHellman:
   val RNG = java.security.SecureRandom()
   val G = BigInt(2)  // used as base in modPow, should be a primitive root modulo P
-  val DefaultBitLength = 4096
+  val DefaultBitLength = 4096  // should be at least 2048
 
   def probablePrime(bitLength: Int = DefaultBitLength): BigInt = BigInt.probablePrime(bitLength, RNG)
 
   def prime(bitLength: Int = DefaultBitLength): BigInt =
-    var p: BigInt = null
-    while 
-      p = probablePrime(bitLength) // a safe prime
-      !p.isProbablePrime(certainty = bitLength)  // check that it is really probably a prime
-    do ()
+    var p: BigInt = probablePrime(bitLength)
+    while !p.isProbablePrime(certainty = bitLength)  // check that it is really probably a prime
+    do p = probablePrime(bitLength)
     p
 
 
@@ -26,13 +24,15 @@ object DiffieHellman:
 
 
 @main def testDH = 
-  val nbrTests = 5
-  println(s"Generating big prime of bit length ${DiffieHellman.DefaultBitLength}")
+  println(s"Generating big prime of bit length ${DiffieHellman.DefaultBitLength}...")
+  var t0 = System.currentTimeMillis()
   val P = DiffieHellman.prime()
+  println(s"   ... it took ${System.currentTimeMillis() - t0} ms")
 
+  val nbrTests = 5
   for i <- 1 to nbrTests do
     println(s"\n  *** Test run number $i")
-    val t0 = System.currentTimeMillis()
+    t0 = System.currentTimeMillis()
 
     val serverKeys = DiffieHellman.keyPair(P)
     println(s"Send server public key to client: ${serverKeys.publicKey}")
