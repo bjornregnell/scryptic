@@ -1,2 +1,5 @@
 # scryptic
-Cryptographic utilities in Scala
+
+Cryptographic playground in Scala
+
+Run with `scala run .` 
