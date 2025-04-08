@@ -4,16 +4,9 @@
 object DiffieHellman:
   val RNG = java.security.SecureRandom()
   val G = BigInt(2)  // used as base in modPow, should be a primitive root modulo P
-  val DefaultBitLength = 4096  // should be at least 2048
+  val DefaultBitLength = 2048  // should be at least 2048
 
-  def probablePrime(bitLength: Int = DefaultBitLength): BigInt = BigInt.probablePrime(bitLength, RNG)
-
-  def prime(bitLength: Int = DefaultBitLength): BigInt =
-    var p: BigInt = probablePrime(bitLength)
-    while !p.isProbablePrime(certainty = bitLength)  // check that it is really probably a prime
-    do p = probablePrime(bitLength)
-    p
-
+  def probablePrime(bitLength: Int = DefaultBitLength): BigInt = BigInt(bitLength, certainty = bitLength, RNG)
 
   def keyPair(prime: BigInt, bitLength: Int = DefaultBitLength): (publicKey: BigInt, privateKey: BigInt) =
     val secret = BigInt(bitLength, RNG)
@@ -26,7 +19,7 @@ object DiffieHellman:
 @main def testDH = 
   println(s"Generating big prime of bit length ${DiffieHellman.DefaultBitLength}...")
   var t0 = System.currentTimeMillis()
-  val P = DiffieHellman.prime()
+  val P = DiffieHellman.probablePrime()
   println(s"   ... it took ${System.currentTimeMillis() - t0} ms")
 
   val nbrTests = 5
