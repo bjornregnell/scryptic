@@ -209,8 +209,9 @@ object scryptic:
         (isValid = true, isFileCreated = true, salt = masterSalt)
 
     case class VaultOpenResult[K, V](vaultOpt: Option[KeyValueVault[K, V]], isMasterPasswordFileCreated: Boolean, saltOpt: Option[String])
-
-    def openVault[K, V](masterPassword: String, mpwFile: java.io.File, vaultFile: java.io.File): VaultOpenResult[K, V] =
+    
+    /** Open a vault after authentication, give explicit key and value type params [K, V] or else Nothing is inferred! */
+    def openVaultOf[K, V](masterPassword: String, mpwFile: java.io.File, vaultFile: java.io.File): VaultOpenResult[K, V] =
       val (isValid, isMpwFileCreated, salt) = checkMasterPassword(mpwFile, masterPassword)
       if !isValid then VaultOpenResult(None, isMpwFileCreated, Some(salt)) 
       else
