@@ -39,6 +39,7 @@ object scryptic:
       finally oos.close
   end Bytes
 
+  /** A Secure Hash generator https://en.wikipedia.org/wiki/Secure_Hash_Algorithms */
   object SHA:
     val algorithm = "SHA-512"
     val underlying = java.security.MessageDigest.getInstance(algorithm)
@@ -226,7 +227,6 @@ object scryptic:
   ):
     private val _isAuthenticated = synchronized:
       val check = KeyValueVault.checkMasterPassword(mpwFile = masterPasswordFile, mpw = masterPassword)
-      println(s"DEBUG: check=$check")
       java.util.concurrent.atomic.AtomicBoolean(check.isValid)
 
     def isAuthenticated: Boolean = _isAuthenticated.get()
