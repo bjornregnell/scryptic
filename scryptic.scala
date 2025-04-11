@@ -1,5 +1,6 @@
 //> using scala 3.7.0-RC1
 //> using toolkit 0.7.0
+import scryptic.KeyValueVault.loadStringFromFile
 
 /** A single file of simple cryptographic utilities in Scala based on Java Development Kit. */
 object scryptic:
@@ -173,5 +174,89 @@ object scryptic:
     }.toOption
 
   end AES
+
+  object KeyValueVault:
+    def loadStringFromFile(file: java.io.File, enc: String = "UTF-8"): String =
+      val s = scala.io.Source.fromFile(file, enc)
+      try s.mkString finally s.close
+    
+    extension (s: String) def saveToFile(file: java.io.File, enc: String = "UTF-8"): Unit =
+      val pw = java.io.PrintWriter(file, enc)
+      try pw.write(s) finally pw.close()
+
+    case class MasterSecret(salt: String, saltedHash: String)
+
+    def saveMasterPassword(mpwFile: java.io.File, mpw: String): String =
+      val salt = Salt.nextRandomSalt()
+      val m = MasterSecret(salt, SHA.hash(mpw + salt))
+      val encrypted = AES.encryptObjectToString(m, mpw)
+      encrypted.saveToFile(mpwFile)
+      salt
+
+    def checkMasterPassword(mpwFile: java.io.File, mpw: String): (isValid: Boolean, isFileCreated: Boolean, salt: String) =
+      if mpwFile.exists then
+        val encrypted = loadStringFromFile(mpwFile)
+        val MasterSecret(masterSalt, saltedHash) =
+          AES.decryptObjectFromString[MasterSecret](encrypted, mpw).getOrElse(MasterSecret("", ""))
+        if SHA.hash(mpw + masterSalt) == saltedHash 
+        then (isValid = true, isFileCreated = false, salt = masterSalt)
+        else (isValid = false, isFileCreated = false, salt = "")
+      else
+        mpwFile.getParentFile.mkdirs()
+        mpwFile.createNewFile()
+        val masterSalt = saveMasterPassword(mpwFile, mpw)
+        (isValid = true, isFileCreated = true, salt = masterSalt)
+
+    case class VaultOpenResult[K, V](vaultOpt: Option[KeyValueVault[K, V]], isMasterPasswordFileCreated: Boolean, saltOpt: Option[String])
+
+    def openVault[K, V](masterPassword: String, mpwFile: java.io.File, vaultFile: java.io.File): VaultOpenResult[K, V] =
+      val (isValid, isMpwFileCreated, salt) = checkMasterPassword(mpwFile, masterPassword)
+      if !isValid then VaultOpenResult(None, isMpwFileCreated, Some(salt)) 
+      else
+        val vault = new KeyValueVault[K, V](masterPassword, masterSalt = salt, masterPasswordFile = mpwFile, vaultFile)
+        VaultOpenResult(Some(vault), isMpwFileCreated, saltOpt = None)
+
+  final class KeyValueVault[K, V] private (
+    masterPassword: String, 
+    masterSalt: String,
+    masterPasswordFile: java.io.File,
+    vaultFile: java.io.File,
+  ):
+    private val _isAuthenticated = synchronized:
+      val check = KeyValueVault.checkMasterPassword(mpwFile = masterPasswordFile, mpw = masterPassword)
+      println(s"DEBUG: check=$check")
+      java.util.concurrent.atomic.AtomicBoolean(check.isValid)
+
+    def isAuthenticated: Boolean = _isAuthenticated.get()
+      
+    import scala.jdk.CollectionConverters.*
+    import scala.collection.concurrent.{Map as CMap}
+
+    private lazy val store: CMap[K, V] = 
+      if !vaultFile.exists() then 
+        java.util.concurrent.ConcurrentHashMap[K, V]().asScala
+      else 
+        val encrypted = loadStringFromFile(vaultFile)
+        val storeOpt = AES.decryptObjectFromString[CMap[K, V]](encrypted, password = masterPassword)
+        if storeOpt.isEmpty then 
+          _isAuthenticated.set(false)
+          java.util.concurrent.ConcurrentHashMap[K, V]().asScala
+        else
+          _isAuthenticated.set(true)
+          storeOpt.get
+
+    def save(): Boolean = synchronized:
+      if isAuthenticated then 
+        val encrypted = AES.encryptObjectToString(store, password = masterPassword)
+        KeyValueVault.saveToFile(encrypted)(vaultFile)
+        true
+      else false
+
+    def get(key: K): Option[V] = store.get(key)
+    def getOrElse(key: K, default: => V): V = store.getOrElse(key, default)
+    def getOrElseUpdate(key: K, default: => V): V = store.getOrElseUpdate(key, default)
+    def addOneAndSave(key: K, value: V): Boolean = synchronized:
+      store.addOne(key, value)
+      save()
 
 end scryptic  
