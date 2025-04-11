@@ -64,7 +64,7 @@ object scryptic:
       Base64.encodeToBase64String(xs)
 
     extension (s: String) 
-      def appendSalt: (salted: String, salt: String, saltedHash: String) = 
+      def appendRandomSalt: (salted: String, salt: String, saltedHash: String) = 
         val theSalt = nextRandomSalt()
         (salted = s ++ theSalt, salt = theSalt, saltedHash = SHA.hash(s ++ theSalt))
     
