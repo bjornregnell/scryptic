@@ -174,7 +174,8 @@ object scryptic:
     }.toOption
 
   end AES
-
+  
+  /** An encrypted, thread-safe, disk-saved key-value-store that saves on update. */ 
   object KeyValueVault:
     def loadStringFromFile(file: java.io.File, enc: String = "UTF-8"): String =
       val s = scala.io.Source.fromFile(file, enc)
